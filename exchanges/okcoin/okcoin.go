@@ -95,6 +95,8 @@ func (o *OKCoin) SetDefaults() {
 		exchange.WithdrawFiatViaWebsiteOnly
 	o.SupportsAutoPairUpdating = false
 	o.SupportsRESTTickerBatching = false
+	o.SupportsRESTAPI = true
+	o.SupportsWebsocketAPI = true
 	o.WebsocketInit()
 	o.Websocket.Functionality = exchange.WebsocketTickerSupported |
 		exchange.WebsocketOrderbookSupported |
