@@ -8,12 +8,116 @@ import (
 	"time"
 
 	"github.com/thrasher-/gocryptotrader/common"
+	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency/pair"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
+	"github.com/thrasher-/gocryptotrader/exchanges/request"
 	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
+
+// GetDefaultConfig returns a default exchange config
+func (z *ZB) GetDefaultConfig() (*config.ExchangeConfig, error) {
+	z.SetDefaults()
+	exchCfg := new(config.ExchangeConfig)
+	exchCfg.Name = z.Name
+	exchCfg.HTTPTimeout = exchange.DefaultHTTPTimeout
+	exchCfg.BaseCurrencies = common.JoinStrings(z.BaseCurrencies, ",")
+
+	err := z.SetupDefaults(exchCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if z.Features.Supports.RESTCapabilities.AutoPairUpdates {
+		err = z.UpdateTradablePairs(true)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return exchCfg, nil
+}
+
+// SetDefaults sets default values for the exchange
+func (z *ZB) SetDefaults() {
+	z.Name = "ZB"
+	z.Enabled = true
+	z.Verbose = true
+	z.APIWithdrawPermissions = exchange.AutoWithdrawCrypto |
+		exchange.NoFiatWithdrawals
+	z.API.CredentialsValidator.RequiresKey = true
+	z.API.CredentialsValidator.RequiresSecret = true
+
+	z.CurrencyPairs = exchange.CurrencyPairs{
+		AssetTypes: assets.AssetTypes{
+			assets.AssetTypeSpot,
+		},
+
+		UseGlobalPairFormat: true,
+		RequestFormat: config.CurrencyPairFormatConfig{
+			Delimiter: "_",
+		},
+		ConfigFormat: config.CurrencyPairFormatConfig{
+			Delimiter: "_",
+			Uppercase: true,
+		},
+	}
+
+	z.Features = exchange.Features{
+		Supports: exchange.FeaturesSupported{
+			REST:      true,
+			Websocket: true,
+
+			Trading: exchange.TradingSupported{
+				Spot: true,
+			},
+
+			RESTCapabilities: exchange.ProtocolFeatures{
+				AutoPairUpdates: true,
+				TickerBatching:  true,
+			},
+		},
+		Enabled: exchange.FeaturesEnabled{
+			AutoPairUpdates: true,
+		},
+	}
+
+	z.Requester = request.New(z.Name,
+		request.NewRateLimit(time.Second*10, zbAuthRate),
+		request.NewRateLimit(time.Second*10, zbUnauthRate),
+		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout))
+
+	z.API.Endpoints.URLDefault = zbTradeURL
+	z.API.Endpoints.URL = z.API.Endpoints.URLDefault
+	z.API.Endpoints.URLSecondaryDefault = zbMarketURL
+	z.API.Endpoints.URLSecondary = z.API.Endpoints.URLSecondaryDefault
+	z.WebsocketInit()
+	z.Websocket.Functionality = exchange.WebsocketTickerSupported |
+		exchange.WebsocketOrderbookSupported |
+		exchange.WebsocketTradeDataSupported
+}
+
+// Setup sets user configuration
+func (z *ZB) Setup(exch *config.ExchangeConfig) error {
+	if !exch.Enabled {
+		z.SetEnabled(false)
+		return nil
+	}
+
+	err := z.SetupDefaults(exch)
+	if err != nil {
+		return err
+	}
+
+	return z.WebsocketSetup(z.WsConnect,
+		exch.Name,
+		exch.Features.Enabled.Websocket,
+		zbWebsocketAPI,
+		exch.API.Endpoints.WebsocketURL)
+}
 
 // Start starts the OKEX go routine
 func (z *ZB) Start(wg *sync.WaitGroup) {
@@ -27,28 +131,47 @@ func (z *ZB) Start(wg *sync.WaitGroup) {
 // Run implements the OKEX wrapper
 func (z *ZB) Run() {
 	if z.Verbose {
-		log.Debugf("%s polling delay: %ds.\n", z.GetName(), z.RESTPollingDelay)
-		log.Debugf("%s %d currencies enabled: %s.\n", z.GetName(), len(z.EnabledPairs), z.EnabledPairs)
+		log.Debugf("%s %d currencies enabled: %s.\n", z.GetName(), len(z.CurrencyPairs.Spot.Enabled), z.CurrencyPairs.Spot.Enabled)
 	}
 
-	markets, err := z.GetMarkets()
-	if err != nil {
-		log.Errorf("%s Unable to fetch symbols.\n", z.GetName())
-	} else {
-		var currencies []string
-		for x := range markets {
-			currencies = append(currencies, x)
-		}
+	if !z.GetEnabledFeatures().AutoPairUpdates {
+		return
+	}
 
-		err = z.UpdateCurrencies(currencies, false, false)
-		if err != nil {
-			log.Errorf("%s Failed to update available currencies.\n", z.GetName())
-		}
+	err := z.UpdateTradablePairs(false)
+	if err != nil {
+		log.Printf("%s failed to update tradable pairs. Err: %s", z.Name, err)
 	}
 }
 
+// FetchTradablePairs returns a list of the exchanges tradable pairs
+func (z *ZB) FetchTradablePairs(asset assets.AssetType) ([]string, error) {
+	markets, err := z.GetMarkets()
+	if err != nil {
+		return nil, err
+	}
+
+	var currencies []string
+	for x := range markets {
+		currencies = append(currencies, x)
+	}
+
+	return currencies, nil
+}
+
+// UpdateTradablePairs updates the exchanges available pairs and stores
+// them in the exchanges config
+func (z *ZB) UpdateTradablePairs(forceUpdate bool) error {
+	pairs, err := z.FetchTradablePairs(assets.AssetTypeSpot)
+	if err != nil {
+		return nil
+	}
+
+	return z.UpdatePairs(pairs, assets.AssetTypeSpot, false, forceUpdate)
+}
+
 // UpdateTicker updates and returns the ticker for a currency pair
-func (z *ZB) UpdateTicker(p pair.CurrencyPair, assetType string) (ticker.Price, error) {
+func (z *ZB) UpdateTicker(p pair.CurrencyPair, assetType assets.AssetType) (ticker.Price, error) {
 	var tickerPrice ticker.Price
 
 	result, err := z.GetTickers()
@@ -56,8 +179,8 @@ func (z *ZB) UpdateTicker(p pair.CurrencyPair, assetType string) (ticker.Price, 
 		return tickerPrice, err
 	}
 
-	for _, x := range z.GetEnabledCurrencies() {
-		currencySplit := common.SplitStrings(exchange.FormatExchangeCurrency(z.Name, x).String(), "_")
+	for _, x := range z.GetEnabledPairs(assetType) {
+		currencySplit := common.SplitStrings(z.FormatExchangeCurrency(x, assetType).String(), "_")
 		currency := currencySplit[0] + currencySplit[1]
 		var tp ticker.Price
 		tp.Pair = x
@@ -75,7 +198,7 @@ func (z *ZB) UpdateTicker(p pair.CurrencyPair, assetType string) (ticker.Price, 
 }
 
 // FetchTicker returns the ticker for a currency pair
-func (z *ZB) FetchTicker(p pair.CurrencyPair, assetType string) (ticker.Price, error) {
+func (z *ZB) FetchTicker(p pair.CurrencyPair, assetType assets.AssetType) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(z.GetName(), p, assetType)
 	if err != nil {
 		return z.UpdateTicker(p, assetType)
@@ -84,7 +207,7 @@ func (z *ZB) FetchTicker(p pair.CurrencyPair, assetType string) (ticker.Price, e
 }
 
 // FetchOrderbook returns orderbook base on the currency pair
-func (z *ZB) FetchOrderbook(currency pair.CurrencyPair, assetType string) (orderbook.Base, error) {
+func (z *ZB) FetchOrderbook(currency pair.CurrencyPair, assetType assets.AssetType) (orderbook.Base, error) {
 	ob, err := orderbook.GetOrderbook(z.GetName(), currency, assetType)
 	if err != nil {
 		return z.UpdateOrderbook(currency, assetType)
@@ -93,9 +216,9 @@ func (z *ZB) FetchOrderbook(currency pair.CurrencyPair, assetType string) (order
 }
 
 // UpdateOrderbook updates and returns the orderbook for a currency pair
-func (z *ZB) UpdateOrderbook(p pair.CurrencyPair, assetType string) (orderbook.Base, error) {
+func (z *ZB) UpdateOrderbook(p pair.CurrencyPair, assetType assets.AssetType) (orderbook.Base, error) {
 	var orderBook orderbook.Base
-	currency := exchange.FormatExchangeCurrency(z.Name, p).String()
+	currency := z.FormatExchangeCurrency(p, assetType).String()
 
 	orderbookNew, err := z.GetOrderbook(currency)
 	if err != nil {
@@ -160,7 +283,7 @@ func (z *ZB) GetFundingHistory() ([]exchange.FundHistory, error) {
 }
 
 // GetExchangeHistory returns historic trade data since exchange opening.
-func (z *ZB) GetExchangeHistory(p pair.CurrencyPair, assetType string) ([]exchange.TradeHistory, error) {
+func (z *ZB) GetExchangeHistory(p pair.CurrencyPair, assetType assets.AssetType) ([]exchange.TradeHistory, error) {
 	var resp []exchange.TradeHistory
 
 	return resp, common.ErrNotYetImplemented
@@ -210,7 +333,8 @@ func (z *ZB) CancelOrder(order exchange.OrderCancellation) error {
 		return err
 	}
 
-	return z.CancelExistingOrder(orderIDInt, exchange.FormatExchangeCurrency(z.Name, order.CurrencyPair).String())
+	return z.CancelExistingOrder(orderIDInt, z.FormatExchangeCurrency(order.CurrencyPair,
+		order.AssetType).String())
 }
 
 // CancelAllOrders cancels all orders associated with a currency pair
@@ -219,11 +343,11 @@ func (z *ZB) CancelAllOrders(_ exchange.OrderCancellation) (exchange.CancelAllOr
 		OrderStatus: make(map[string]string),
 	}
 	var allOpenOrders []Order
-	for _, currency := range z.GetEnabledCurrencies() {
+	for _, currency := range z.GetEnabledPairs(assets.AssetTypeSpot) {
 		var pageNumber int64
 		// Limiting to 10 pages
 		for i := 0; i < 10; i++ {
-			openOrders, err := z.GetUnfinishedOrdersIgnoreTradeType(exchange.FormatExchangeCurrency(z.Name, currency).String(), 1, 10)
+			openOrders, err := z.GetUnfinishedOrdersIgnoreTradeType(z.FormatExchangeCurrency(currency, assets.AssetTypeSpot).String(), 1, 10)
 			if err != nil {
 				return cancelAllOrdersResponse, err
 			}
@@ -299,7 +423,7 @@ func (z *ZB) GetActiveOrders(getOrdersRequest exchange.GetOrdersRequest) ([]exch
 		var pageNumber int64
 		// Limiting to 10 pages
 		for i := 0; i < 10; i++ {
-			resp, err := z.GetUnfinishedOrdersIgnoreTradeType(exchange.FormatExchangeCurrency(z.Name, currency).String(), pageNumber, 10)
+			resp, err := z.GetUnfinishedOrdersIgnoreTradeType(z.FormatExchangeCurrency(currency, assets.AssetTypeSpot).String(), pageNumber, 10)
 			if err != nil {
 				return nil, err
 			}
@@ -314,7 +438,7 @@ func (z *ZB) GetActiveOrders(getOrdersRequest exchange.GetOrdersRequest) ([]exch
 
 	var orders []exchange.OrderDetail
 	for _, order := range allOrders {
-		symbol := pair.NewCurrencyPairDelimiter(order.Currency, z.ConfigCurrencyPairFormat.Delimiter)
+		symbol := pair.NewCurrencyPairDelimiter(order.Currency, z.CurrencyPairs.ConfigFormat.Delimiter)
 		orderDate := time.Unix(int64(order.TradeDate), 0)
 		orderSide := orderSideMap[order.Type]
 		orders = append(orders, exchange.OrderDetail{
@@ -353,7 +477,7 @@ func (z *ZB) GetOrderHistory(getOrdersRequest exchange.GetOrdersRequest) ([]exch
 		var pageNumber int64
 		// Limiting to 10 pages
 		for i := 0; i < 10; i++ {
-			resp, err := z.GetOrders(exchange.FormatExchangeCurrency(z.Name, currency).String(), pageNumber, side)
+			resp, err := z.GetOrders(z.FormatExchangeCurrency(currency, assets.AssetTypeSpot).String(), pageNumber, side)
 			if err != nil {
 				return nil, err
 			}
@@ -369,7 +493,7 @@ func (z *ZB) GetOrderHistory(getOrdersRequest exchange.GetOrdersRequest) ([]exch
 
 	var orders []exchange.OrderDetail
 	for _, order := range allOrders {
-		symbol := pair.NewCurrencyPairDelimiter(order.Currency, z.ConfigCurrencyPairFormat.Delimiter)
+		symbol := pair.NewCurrencyPairDelimiter(order.Currency, z.CurrencyPairs.ConfigFormat.Delimiter)
 		orderDate := time.Unix(int64(order.TradeDate), 0)
 		orderSide := orderSideMap[order.Type]
 		orders = append(orders, exchange.OrderDetail{

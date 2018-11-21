@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
+
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency/pair"
@@ -73,8 +75,8 @@ func (o *OKCoin) WsConnect() error {
 
 	go o.WsHandleData()
 
-	for _, p := range o.GetEnabledCurrencies() {
-		fPair := exchange.FormatExchangeCurrency(o.GetName(), p)
+	for _, p := range o.GetEnabledPairs(assets.AssetTypeSpot) {
+		fPair := o.FormatExchangeCurrency(p, assets.AssetTypeSpot)
 
 		o.AddChannel(fmt.Sprintf(wsSubDepthFull, fPair.String(), "20"))
 		o.AddChannel(fmt.Sprintf(wsSubKline, fPair.String(), klineValues[0]))
@@ -148,7 +150,7 @@ func (o *OKCoin) WsHandleData() {
 				common.StringToUpper(splitChar[4]))
 			currencyPair := common.JoinStrings(currencyPairSlice, "-")
 
-			assetType := common.StringToUpper(splitChar[2])
+			assetType := assets.AssetType(common.StringToUpper(splitChar[2]))
 
 			switch {
 			case common.StringContains(init[0].Channel, "ticker") &&

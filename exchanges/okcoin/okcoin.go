@@ -7,15 +7,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-/gocryptotrader/common"
-	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency/symbol"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
-	"github.com/thrasher-/gocryptotrader/exchanges/request"
-	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
 
@@ -79,89 +75,7 @@ type OKCoin struct {
 	exchange.Base
 	RESTErrors      map[string]string
 	WebsocketErrors map[string]string
-	FuturesValues   []string
 	WebsocketConn   *websocket.Conn
-}
-
-// SetDefaults sets current default values for this package
-func (o *OKCoin) SetDefaults() {
-	o.SetErrorDefaults()
-	o.SetWebsocketErrorDefaults()
-	o.Enabled = false
-	o.Verbose = false
-	o.RESTPollingDelay = 10
-	o.AssetTypes = []string{ticker.Spot}
-	o.APIWithdrawPermissions = exchange.AutoWithdrawCrypto |
-		exchange.WithdrawFiatViaWebsiteOnly
-	o.SupportsAutoPairUpdating = false
-	o.SupportsRESTTickerBatching = false
-	o.SupportsRESTAPI = true
-	o.SupportsWebsocketAPI = true
-	o.WebsocketInit()
-	o.Websocket.Functionality = exchange.WebsocketTickerSupported |
-		exchange.WebsocketOrderbookSupported |
-		exchange.WebsocketKlineSupported
-}
-
-// Setup sets exchange configuration parameters
-func (o *OKCoin) Setup(exch config.ExchangeConfig) {
-	if !exch.Enabled {
-		o.SetEnabled(false)
-	} else {
-		o.Name = "OKCOIN International"
-		o.Enabled = true
-		o.AuthenticatedAPISupport = exch.AuthenticatedAPISupport
-		o.AssetTypes = append(o.AssetTypes, o.FuturesValues...)
-		o.APIUrlDefault = okcoinAPIURL
-		o.APIUrl = o.APIUrlDefault
-		o.WebsocketURL = okcoinWebsocketURL
-		o.Requester = request.New(o.Name,
-			request.NewRateLimit(time.Second, okcoinAuthRate),
-			request.NewRateLimit(time.Second, okcoinUnauthRate),
-			common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout))
-		o.ConfigCurrencyPairFormat.Delimiter = "_"
-		o.ConfigCurrencyPairFormat.Uppercase = true
-		o.RequestCurrencyPairFormat.Uppercase = false
-		o.RequestCurrencyPairFormat.Delimiter = "_"
-		o.SupportsAutoPairUpdating = true
-		o.SetAPIKeys(exch.APIKey, exch.APISecret, "", false)
-		o.SetHTTPClientTimeout(exch.HTTPTimeout)
-		o.SetHTTPClientUserAgent(exch.HTTPUserAgent)
-		o.RESTPollingDelay = exch.RESTPollingDelay
-		o.Verbose = exch.Verbose
-		o.Websocket.SetEnabled(exch.Websocket)
-		o.BaseCurrencies = common.SplitStrings(exch.BaseCurrencies, ",")
-		o.AvailablePairs = common.SplitStrings(exch.AvailablePairs, ",")
-		o.EnabledPairs = common.SplitStrings(exch.EnabledPairs, ",")
-		err := o.SetCurrencyPairFormat()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = o.SetAssetTypes()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = o.SetAutoPairDefaults()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = o.SetAPIURL(exch)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = o.SetClientProxyAddress(exch.ProxyAddress)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = o.WebsocketSetup(o.WsConnect,
-			exch.Name,
-			exch.Websocket,
-			okcoinWebsocketURL,
-			o.WebsocketURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }
 
 // GetSpotInstruments returns a list of tradable spot instruments and their properties
@@ -183,7 +97,7 @@ func (o *OKCoin) GetTicker(symbol string) (Ticker, error) {
 	resp := TickerResponse{}
 	vals := url.Values{}
 	vals.Set("symbol", symbol)
-	path := common.EncodeURLValues(o.APIUrl+okcoinTicker, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinTicker, vals)
 
 	return resp.Ticker, o.SendHTTPRequest(path, &resp)
 }
@@ -200,7 +114,7 @@ func (o *OKCoin) GetOrderBook(symbol string, size int64, merge bool) (Orderbook,
 		vals.Set("merge", "1")
 	}
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinDepth, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinDepth, vals)
 	return resp, o.SendHTTPRequest(path, &resp)
 }
 
@@ -213,7 +127,7 @@ func (o *OKCoin) GetTrades(symbol string, since int64) ([]Trades, error) {
 		vals.Set("since", strconv.FormatInt(since, 10))
 	}
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinTrades, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinTrades, vals)
 	return result, o.SendHTTPRequest(path, &result)
 }
 
@@ -232,7 +146,7 @@ func (o *OKCoin) GetKline(symbol, klineType string, size, since int64) ([]interf
 		vals.Set("since", strconv.FormatInt(since, 10))
 	}
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinKline, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinKline, vals)
 	return resp, o.SendHTTPRequest(path, &resp)
 }
 
@@ -242,7 +156,7 @@ func (o *OKCoin) GetFuturesTicker(symbol, contractType string) (FuturesTicker, e
 	vals := url.Values{}
 	vals.Set("symbol", symbol)
 	vals.Set("contract_type", contractType)
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesTicker, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesTicker, vals)
 
 	return resp.Ticker, o.SendHTTPRequest(path, &resp)
 }
@@ -261,7 +175,7 @@ func (o *OKCoin) GetFuturesDepth(symbol, contractType string, size int64, merge 
 		vals.Set("merge", "1")
 	}
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesDepth, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesDepth, vals)
 	return result, o.SendHTTPRequest(path, &result)
 }
 
@@ -272,7 +186,7 @@ func (o *OKCoin) GetFuturesTrades(symbol, contractType string) ([]FuturesTrades,
 	vals.Set("symbol", symbol)
 	vals.Set("contract_type", contractType)
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesTrades, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesTrades, vals)
 	return result, o.SendHTTPRequest(path, &result)
 }
 
@@ -286,7 +200,7 @@ func (o *OKCoin) GetFuturesIndex(symbol string) (float64, error) {
 	vals := url.Values{}
 	vals.Set("symbol", symbol)
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesIndex, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesIndex, vals)
 	return result.Index, o.SendHTTPRequest(path, &result)
 }
 
@@ -297,7 +211,7 @@ func (o *OKCoin) GetFuturesExchangeRate() (float64, error) {
 	}
 
 	result := Response{}
-	return result.Rate, o.SendHTTPRequest(o.APIUrl+okcoinExchangeRate, &result)
+	return result.Rate, o.SendHTTPRequest(o.API.Endpoints.URL+okcoinExchangeRate, &result)
 }
 
 // GetFuturesEstimatedPrice returns a current estimated futures price for a
@@ -310,7 +224,7 @@ func (o *OKCoin) GetFuturesEstimatedPrice(symbol string) (float64, error) {
 	result := Response{}
 	vals := url.Values{}
 	vals.Set("symbol", symbol)
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesEstimatedPrice, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesEstimatedPrice, vals)
 
 	return result.Price, o.SendHTTPRequest(path, &result)
 }
@@ -331,7 +245,7 @@ func (o *OKCoin) GetFuturesKline(symbol, klineType, contractType string, size, s
 		vals.Set("since", strconv.FormatInt(since, 10))
 	}
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesKline, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesKline, vals)
 	return resp, o.SendHTTPRequest(path, &resp)
 }
 
@@ -342,7 +256,7 @@ func (o *OKCoin) GetFuturesHoldAmount(symbol, contractType string) ([]FuturesHol
 	vals.Set("symbol", symbol)
 	vals.Set("contract_type", contractType)
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesHoldAmount, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesHoldAmount, vals)
 	return resp, o.SendHTTPRequest(path, &resp)
 }
 
@@ -359,7 +273,7 @@ func (o *OKCoin) GetFuturesExplosive(symbol, contractType string, status, curren
 	vals.Set("current_page", strconv.FormatInt(currentPage, 10))
 	vals.Set("page_length", strconv.FormatInt(pageLength, 10))
 
-	path := common.EncodeURLValues(o.APIUrl+okcoinFuturesExplosive, vals)
+	path := common.EncodeURLValues(o.API.Endpoints.URL+okcoinFuturesExplosive, vals)
 
 	return resp.Data, o.SendHTTPRequest(path, &resp)
 }
@@ -903,16 +817,16 @@ func (o *OKCoin) SendHTTPRequest(path string, result interface{}) error {
 
 // SendAuthenticatedHTTPRequest sends an authenticated HTTP request
 func (o *OKCoin) SendAuthenticatedHTTPRequest(method string, v url.Values, result interface{}) (err error) {
-	if !o.AuthenticatedAPISupport {
+	if !o.AllowAuthenticatedRequest() {
 		return fmt.Errorf(exchange.WarningAuthenticatedRequestWithoutCredentialsSet, o.Name)
 	}
 
-	v.Set("api_key", o.APIKey)
-	hasher := common.GetMD5([]byte(v.Encode() + "&secret_key=" + o.APISecret))
+	v.Set("api_key", o.API.Credentials.Key)
+	hasher := common.GetMD5([]byte(v.Encode() + "&secret_key=" + o.API.Credentials.Secret))
 	v.Set("sign", strings.ToUpper(common.HexEncodeToString(hasher)))
 
 	encoded := v.Encode()
-	path := o.APIUrl + method
+	path := o.API.Endpoints.URL + method
 
 	if o.Verbose {
 		log.Debugf("Sending POST request to %s with params %s\n", path, encoded)

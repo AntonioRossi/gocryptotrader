@@ -31,9 +31,9 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Error("Test Failed - GateIO Setup() init error")
 	}
-	gateioConfig.AuthenticatedAPISupport = true
-	gateioConfig.APIKey = apiKey
-	gateioConfig.APISecret = apiSecret
+	gateioConfig.API.AuthenticatedSupport = true
+	gateioConfig.API.Credentials.Key = apiKey
+	gateioConfig.API.Credentials.Secret = apiSecret
 
 	g.Setup(gateioConfig)
 }
@@ -288,11 +288,7 @@ func TestGetOrderHistory(t *testing.T) {
 // Any tests below this line have the ability to impact your orders on the exchange. Enable canManipulateRealOrders to run them
 // ----------------------------------------------------------------------------------------------------------------------------
 func areTestAPIKeysSet() bool {
-	if g.APIKey != "" && g.APIKey != "Key" &&
-		g.APISecret != "" && g.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return g.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

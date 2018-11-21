@@ -3,7 +3,6 @@ package bitstamp
 import (
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency/pair"
@@ -36,9 +35,6 @@ func TestSetDefaults(t *testing.T) {
 	if b.Websocket.IsEnabled() {
 		t.Error("Test Failed - SetDefaults() error")
 	}
-	if b.RESTPollingDelay != 10 {
-		t.Error("Test Failed - SetDefaults() error")
-	}
 }
 
 func TestSetup(t *testing.T) {
@@ -48,16 +44,15 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Error("Test Failed - Bitstamp Setup() init error")
 	}
-	bConfig.APIKey = apiKey
-	bConfig.APISecret = apiSecret
-	bConfig.ClientID = customerID
+	bConfig.API.Credentials.Key = apiKey
+	bConfig.API.Credentials.Secret = apiSecret
+	bConfig.API.Credentials.ClientID = customerID
 
 	b.Setup(bConfig)
-	b.ClientID = customerID
 
-	if !b.IsEnabled() || b.RESTPollingDelay != time.Duration(10) ||
+	if !b.IsEnabled() || b.API.AuthenticatedSupport ||
 		b.Verbose || b.Websocket.IsEnabled() || len(b.BaseCurrencies) < 1 ||
-		len(b.AvailablePairs) < 1 || len(b.EnabledPairs) < 1 {
+		len(b.CurrencyPairs.Spot.Available) < 1 || len(b.CurrencyPairs.Spot.Enabled) < 1 {
 		t.Error("Test Failed - Bitstamp Setup values not set correctly")
 	}
 }
@@ -254,8 +249,7 @@ func TestGetOpenOrders(t *testing.T) {
 
 func TestGetOrderStatus(t *testing.T) {
 	t.Parallel()
-
-	if !areTestAPIKeysSet() {
+	if !b.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -285,8 +279,7 @@ func TestCancelAllExistingOrders(t *testing.T) {
 
 func TestPlaceOrder(t *testing.T) {
 	t.Parallel()
-
-	if !areTestAPIKeysSet() {
+	if !b.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -311,8 +304,7 @@ func TestGetWithdrawalRequests(t *testing.T) {
 
 func TestCryptoWithdrawal(t *testing.T) {
 	t.Parallel()
-
-	if !areTestAPIKeysSet() {
+	if !b.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -342,8 +334,7 @@ func TestGetUnconfirmedBitcoinDeposits(t *testing.T) {
 
 func TestTransferAccountBalance(t *testing.T) {
 	t.Parallel()
-
-	if !areTestAPIKeysSet() {
+	if !b.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -404,11 +395,7 @@ func TestGetOrderHistory(t *testing.T) {
 // Any tests below this line have the ability to impact your orders on the exchange. Enable canManipulateRealOrders to run them
 // ----------------------------------------------------------------------------------------------------------------------------
 func areTestAPIKeysSet() bool {
-	if b.APIKey != "" && b.APIKey != "Key" &&
-		b.APISecret != "" && b.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return b.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

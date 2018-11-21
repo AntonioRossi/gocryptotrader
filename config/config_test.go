@@ -5,6 +5,7 @@ import (
 
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency/pair"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
 
@@ -302,15 +303,21 @@ func TestCheckPairConsistency(t *testing.T) {
 	}
 
 	cfg.Exchanges = append(cfg.Exchanges, ExchangeConfig{
-		Name:           "TestExchange",
-		Enabled:        true,
-		AvailablePairs: "DOGE_USD,DOGE_AUD",
-		EnabledPairs:   "DOGE_USD,DOGE_AUD,DOGE_BTC",
-		ConfigCurrencyPairFormat: &CurrencyPairFormatConfig{
-			Uppercase: true,
-			Delimiter: "_",
+		Name:    "TestExchange",
+		Enabled: true,
+		CurrencyPairs: &CurrencyPairsConfig{
+			UseGlobalPairFormat: true,
+			ConfigFormat: &CurrencyPairFormatConfig{
+				Delimiter: "_",
+				Uppercase: true,
+			},
+			Spot: &CurrencyPairConfig{
+				Available: "DOGE_USD,DOGE_AUD",
+				Enabled:   "DOGE_USD,DOGE_AUD,DOGE_BTC",
+			},
 		},
 	})
+
 	tec, err := cfg.GetExchangeConfig("TestExchange")
 	if err != nil {
 		t.Error("Test failed. CheckPairConsistency GetExchangeConfig error", err)
@@ -326,8 +333,8 @@ func TestCheckPairConsistency(t *testing.T) {
 		t.Error("Test failed. CheckPairConsistency error:", err)
 	}
 
-	tec.EnabledPairs = "DOGE_LTC,BTC_LTC"
-	err = cfg.UpdateExchangeConfig(&tec)
+	tec.CurrencyPairs.Spot.Enabled = "DOGE_LTC,BTC_LTC"
+	err = cfg.UpdateExchangeConfig(tec)
 	if err != nil {
 		t.Error("Test failed. CheckPairConsistency Update config failed, error:", err)
 	}
@@ -347,14 +354,15 @@ func TestSupportsPair(t *testing.T) {
 		)
 	}
 
-	_, err = cfg.SupportsPair("asdf", pair.NewCurrencyPair("BTC", "USD"))
+	assetType := assets.AssetTypeSpot
+	_, err = cfg.SupportsPair("asdf", pair.NewCurrencyPair("BTC", "USD"), assetType)
 	if err == nil {
 		t.Error(
 			"Test failed. TestSupportsPair. Non-existent exchange returned nil error",
 		)
 	}
 
-	_, err = cfg.SupportsPair("Bitfinex", pair.NewCurrencyPair("BTC", "USD"))
+	_, err = cfg.SupportsPair("Bitfinex", pair.NewCurrencyPair("BTC", "USD"), assetType)
 	if err != nil {
 		t.Errorf(
 			"Test failed. TestSupportsPair. Incorrect values. Err: %s", err,
@@ -370,13 +378,14 @@ func TestGetAvailablePairs(t *testing.T) {
 			"Test failed. TestGetAvailablePairs. LoadConfig Error: %s", err.Error())
 	}
 
-	_, err = cfg.GetAvailablePairs("asdf")
+	assetType := assets.AssetTypeSpot
+	_, err = cfg.GetAvailablePairs("asdf", assetType)
 	if err == nil {
 		t.Error(
 			"Test failed. TestGetAvailablePairs. Non-existent exchange returned nil error")
 	}
 
-	_, err = cfg.GetAvailablePairs("Bitfinex")
+	_, err = cfg.GetAvailablePairs("Bitfinex", assetType)
 	if err != nil {
 		t.Errorf(
 			"Test failed. TestGetAvailablePairs. Incorrect values. Err: %s", err)
@@ -391,13 +400,14 @@ func TestGetEnabledPairs(t *testing.T) {
 			"Test failed. TestGetEnabledPairs. LoadConfig Error: %s", err.Error())
 	}
 
-	_, err = cfg.GetEnabledPairs("asdf")
+	assetType := assets.AssetTypeSpot
+	_, err = cfg.GetEnabledPairs("asdf", assetType)
 	if err == nil {
 		t.Error(
 			"Test failed. TestGetEnabledPairs. Non-existent exchange returned nil error")
 	}
 
-	_, err = cfg.GetEnabledPairs("Bitfinex")
+	_, err = cfg.GetEnabledPairs("Bitfinex", assetType)
 	if err != nil {
 		t.Errorf(
 			"Test failed. TestGetEnabledPairs. Incorrect values. Err: %s", err)
@@ -451,7 +461,7 @@ func TestGetDisabledExchanges(t *testing.T) {
 	}
 
 	exchCfg.Enabled = false
-	err = cfg.UpdateExchangeConfig(&exchCfg)
+	err = cfg.UpdateExchangeConfig(exchCfg)
 	if err != nil {
 		t.Errorf(
 			"Test failed. TestGetDisabledExchanges. UpdateExchangeConfig Error: %s", err.Error(),
@@ -629,17 +639,12 @@ func TestUpdateExchangeConfig(t *testing.T) {
 			"Test failed. UpdateExchangeConfig.GetExchangeConfig: %s", err.Error(),
 		)
 	}
-	e.APIKey = "test1234"
-	err3 := UpdateExchangeConfig.UpdateExchangeConfig(&e)
+	e.API.Credentials.Key = "test1234"
+	err3 := UpdateExchangeConfig.UpdateExchangeConfig(e)
 	if err3 != nil {
 		t.Errorf(
 			"Test failed. UpdateExchangeConfig.UpdateExchangeConfig: %s", err.Error(),
 		)
-	}
-	e.Name = "testyTest"
-	err = UpdateExchangeConfig.UpdateExchangeConfig(&e)
-	if err == nil {
-		t.Error("Test failed. UpdateExchangeConfig.UpdateExchangeConfig Error")
 	}
 }
 
@@ -666,9 +671,9 @@ func TestCheckExchangeConfigValues(t *testing.T) {
 		t.Fatalf("Test failed. Expected exchange %s to have updated HTTPTimeout value", checkExchangeConfigValues.Exchanges[0].Name)
 	}
 
-	checkExchangeConfigValues.Exchanges[0].APIKey = "Key"
-	checkExchangeConfigValues.Exchanges[0].APISecret = "Secret"
-	checkExchangeConfigValues.Exchanges[0].AuthenticatedAPISupport = true
+	checkExchangeConfigValues.Exchanges[0].API.Credentials.Key = "Key"
+	checkExchangeConfigValues.Exchanges[0].API.Credentials.Secret = "Secret"
+	checkExchangeConfigValues.Exchanges[0].API.AuthenticatedSupport = true
 	err = checkExchangeConfigValues.CheckExchangeConfigValues()
 	if err != nil {
 		t.Errorf(
@@ -676,9 +681,9 @@ func TestCheckExchangeConfigValues(t *testing.T) {
 		)
 	}
 
-	checkExchangeConfigValues.Exchanges[0].AuthenticatedAPISupport = true
-	checkExchangeConfigValues.Exchanges[0].APIKey = "TESTYTEST"
-	checkExchangeConfigValues.Exchanges[0].APISecret = "TESTYTEST"
+	checkExchangeConfigValues.Exchanges[0].API.AuthenticatedSupport = true
+	checkExchangeConfigValues.Exchanges[0].API.Credentials.Key = "TESTYTEST"
+	checkExchangeConfigValues.Exchanges[0].API.Credentials.Secret = "TESTYTEST"
 	checkExchangeConfigValues.Exchanges[0].Name = "ITBIT"
 	err = checkExchangeConfigValues.CheckExchangeConfigValues()
 	if err != nil {
@@ -687,41 +692,10 @@ func TestCheckExchangeConfigValues(t *testing.T) {
 		)
 	}
 
-	checkExchangeConfigValues.Exchanges[0].BaseCurrencies = ""
-	err = checkExchangeConfigValues.CheckExchangeConfigValues()
-	if err == nil {
-		t.Errorf(
-			"Test failed. checkExchangeConfigValues.CheckExchangeConfigValues Error",
-		)
-	}
-
-	checkExchangeConfigValues.Exchanges[0].EnabledPairs = ""
-	err = checkExchangeConfigValues.CheckExchangeConfigValues()
-	if err == nil {
-		t.Errorf(
-			"Test failed. checkExchangeConfigValues.CheckExchangeConfigValues Error",
-		)
-	}
-
-	checkExchangeConfigValues.Exchanges[0].AvailablePairs = ""
-	err = checkExchangeConfigValues.CheckExchangeConfigValues()
-	if err == nil {
-		t.Errorf(
-			"Test failed. checkExchangeConfigValues.CheckExchangeConfigValues Error",
-		)
-	}
-
+	checkExchangeConfigValues.Exchanges[0].Enabled = true
 	checkExchangeConfigValues.Exchanges[0].Name = ""
-	err = checkExchangeConfigValues.CheckExchangeConfigValues()
-	if err == nil {
-		t.Errorf(
-			"Test failed. checkExchangeConfigValues.CheckExchangeConfigValues Error",
-		)
-	}
-
-	checkExchangeConfigValues.Cryptocurrencies = ""
-	err = checkExchangeConfigValues.CheckExchangeConfigValues()
-	if err == nil {
+	checkExchangeConfigValues.CheckExchangeConfigValues()
+	if checkExchangeConfigValues.Exchanges[0].Enabled {
 		t.Errorf(
 			"Test failed. checkExchangeConfigValues.CheckExchangeConfigValues Error",
 		)
