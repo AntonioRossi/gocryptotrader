@@ -207,7 +207,7 @@ func TickerUpdaterRoutine() {
 					printTickerSummary(&result, c, assetType, exchangeName, err)
 					if err == nil {
 						Bot.CommsRelayer.StageTickerData(exchangeName, assetType, &result)
-						if Bot.Config.WebsocketServer.Enabled {
+						if Bot.Config.RemoteControl.WebsocketRPC.Enabled {
 							relayWebsocketEvent(result, "ticker_update", assetType.String(), exchangeName)
 						}
 					}
@@ -254,7 +254,7 @@ func OrderbookUpdaterRoutine() {
 					printOrderbookSummary(&result, c, assetType, exchangeName, err)
 					if err == nil {
 						Bot.CommsRelayer.StageOrderbookData(exchangeName, assetType, &result)
-						if Bot.Config.WebsocketServer.Enabled {
+						if Bot.Config.RemoteControl.WebsocketRPC.Enabled {
 							relayWebsocketEvent(result, "orderbook_update", assetType.String(), exchangeName)
 						}
 					}
@@ -301,10 +301,8 @@ func WebsocketRoutine() {
 						log.Println(err)
 					}
 				}
-			} else {
-				if Bot.Settings.Verbose {
-					log.Debugf("Exchange %s websocket support: No", Bot.Exchanges[i].GetName())
-				}
+			} else if Bot.Settings.Verbose {
+				log.Debugf("Exchange %s websocket support: No", Bot.Exchanges[i].GetName())
 			}
 		}(i)
 	}
@@ -402,15 +400,15 @@ func WebsocketDataHandler(ws *exchange.Websocket) {
 
 			case exchange.TradeData:
 				// Trade Data
-				//if Bot.Settings.Verbose {
+				// if Bot.Settings.Verbose {
 				//	log.Println("Websocket trades Updated:   ", data.(exchange.TradeData))
-				//}
+				// }
 
 			case exchange.TickerData:
 				// Ticker data
-				//if Bot.Settings.Verbose {
+				// if Bot.Settings.Verbose {
 				//	log.Println("Websocket Ticker Updated:   ", data.(exchange.TickerData))
-				//}
+				// }
 
 				tickerNew := ticker.Price{
 					Pair:         d.Pair,
@@ -421,7 +419,9 @@ func WebsocketDataHandler(ws *exchange.Websocket) {
 					Low:          d.LowPrice,
 					Volume:       d.Quantity,
 				}
+				Bot.ExchangeCurrencyPairManager.update(ws.GetName(), d.Pair, d.AssetType, SyncItemTicker, nil)
 				ticker.ProcessTicker(ws.GetName(), d.Pair, tickerNew, d.AssetType)
+				printTickerSummary(&tickerNew, tickerNew.Pair, d.AssetType, ws.GetName(), nil)
 			case exchange.KlineData:
 				// Kline data
 				if Bot.Settings.Verbose {
@@ -429,12 +429,9 @@ func WebsocketDataHandler(ws *exchange.Websocket) {
 				}
 			case exchange.WebsocketOrderbookUpdate:
 				// Orderbook data
-				if Bot.Settings.Verbose {
-					//result := data.(exchange.WebsocketOrderbookUpdate)
-
-					//log.Printf("Websocket %s %s orderbook updated", ws.GetName(), result.Pair.Pair().String())
-					//log.Println("Websocket Orderbook Updated:", data.(exchange.WebsocketOrderbookUpdate))
-				}
+				result := data.(exchange.WebsocketOrderbookUpdate)
+				Bot.ExchangeCurrencyPairManager.update(ws.GetName(), result.Pair, result.Asset, SyncItemOrderbook, nil)
+				//nolint:gocritic log.Infof("Websocket %s %s orderbook updated", ws.GetName(), result.Pair.Pair().String())
 			default:
 				if Bot.Settings.Verbose {
 					log.Warnf("Websocket Unknown type:     %s", d)

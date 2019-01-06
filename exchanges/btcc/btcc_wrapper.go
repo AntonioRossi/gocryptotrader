@@ -44,6 +44,8 @@ func (b *BTCC) SetDefaults() {
 	b.Enabled = true
 	b.Verbose = true
 	b.APIWithdrawPermissions = exchange.NoAPIWithdrawalMethods
+	b.API.CredentialsValidator.RequiresKey = true
+	b.API.CredentialsValidator.RequiresSecret = true
 
 	b.CurrencyPairs = exchange.CurrencyPairs{
 		AssetTypes: assets.AssetTypes{

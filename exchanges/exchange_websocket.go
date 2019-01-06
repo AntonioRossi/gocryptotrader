@@ -314,6 +314,12 @@ func (w *Websocket) SetProxyAddress(proxyAddr string) error {
 	return nil
 }
 
+// IsConnected returns whether or not the websocket connection client is
+// connected
+func (w *Websocket) IsConnected() bool {
+	return w.connected
+}
+
 // GetProxyAddress returns the current websocket proxy
 func (w *Websocket) GetProxyAddress() string {
 	return w.proxyAddr

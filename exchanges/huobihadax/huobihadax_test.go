@@ -10,6 +10,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/currency/pair"
 	"github.com/thrasher-/gocryptotrader/currency/symbol"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 )
 
 // Please supply your own APIKEYS here for due diligence testing
@@ -50,7 +51,7 @@ func getDefaultConfig() config.ExchangeConfig {
 
 		HTTPTimeout: 15000000000,
 		CurrencyPairs: &config.CurrencyPairsConfig{
-			AssetTypes:          "Spot",
+			AssetTypes:          assets.AssetTypeSpot.String(),
 			UseGlobalPairFormat: true,
 			ConfigFormat: &config.CurrencyPairFormatConfig{
 				Uppercase: true,

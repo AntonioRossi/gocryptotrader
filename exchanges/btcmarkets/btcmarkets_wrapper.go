@@ -118,7 +118,7 @@ func (b *BTCMarkets) Start(wg *sync.WaitGroup) {
 // Run implements the BTC Markets wrapper
 func (b *BTCMarkets) Run() {
 	if b.Verbose {
-		log.Printf("%s %d currencies enabled: %s.\n", b.GetName(), len(b.CurrencyPairs.Spot.Enabled), b.CurrencyPairs.Spot.Enabled)
+		log.Debugf("%s %d currencies enabled: %s.\n", b.GetName(), len(b.CurrencyPairs.Spot.Enabled), b.CurrencyPairs.Spot.Enabled)
 	}
 
 	forceUpdate := false
@@ -129,7 +129,7 @@ func (b *BTCMarkets) Run() {
 
 		err := b.UpdatePairs(enabledPairs, assets.AssetTypeSpot, true, true)
 		if err != nil {
-			log.Printf("%s failed to update currencies. Err: %s", b.Name, err)
+			log.Errorf("%s failed to update currencies. Err: %s", b.Name, err)
 		}
 	}
 
@@ -139,7 +139,7 @@ func (b *BTCMarkets) Run() {
 
 	err := b.UpdateTradablePairs(forceUpdate)
 	if err != nil {
-		log.Printf("%s failed to update tradable pairs. Err: %s", b.Name, err)
+		log.Errorf("%s failed to update tradable pairs. Err: %s", b.Name, err)
 	}
 }
 
@@ -313,11 +313,7 @@ func (b *BTCMarkets) CancelAllOrders(_ exchange.OrderCancellation) (exchange.Can
 
 	var orderList []int64
 	for _, order := range openOrders {
-		orderIDInt, err := strconv.ParseInt(order.ID, 10, 64)
-		if err != nil {
-			cancelAllOrdersResponse.OrderStatus[order.ID] = err.Error()
-		}
-		orderList = append(orderList, orderIDInt)
+		orderList = append(orderList, order.ID)
 	}
 
 	if len(orderList) > 0 {
@@ -370,7 +366,7 @@ func (b *BTCMarkets) GetOrderInfo(orderID string) (exchange.OrderDetail, error) 
 		OrderDetail.Amount = order.Volume
 		OrderDetail.OrderDate = orderDate
 		OrderDetail.Exchange = b.GetName()
-		OrderDetail.ID = order.ID
+		OrderDetail.ID = strconv.FormatInt(order.ID, 10)
 		OrderDetail.RemainingAmount = order.OpenVolume
 		OrderDetail.OrderSide = side
 		OrderDetail.OrderType = orderType
@@ -436,7 +432,7 @@ func (b *BTCMarkets) GetActiveOrders(getOrdersRequest exchange.GetOrdersRequest)
 		orderType := exchange.OrderType(strings.ToUpper(order.OrderType))
 
 		openOrder := exchange.OrderDetail{
-			ID:              order.ID,
+			ID:              strconv.FormatInt(order.ID, 10),
 			Amount:          order.Volume,
 			Exchange:        b.Name,
 			RemainingAmount: order.OpenVolume,
@@ -499,7 +495,7 @@ func (b *BTCMarkets) GetOrderHistory(getOrdersRequest exchange.GetOrdersRequest)
 		orderType := exchange.OrderType(strings.ToUpper(order.OrderType))
 
 		openOrder := exchange.OrderDetail{
-			ID:              order.ID,
+			ID:              strconv.FormatInt(order.ID, 10),
 			Amount:          order.Volume,
 			Exchange:        b.Name,
 			RemainingAmount: order.OpenVolume,

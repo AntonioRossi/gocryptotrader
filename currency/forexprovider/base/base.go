@@ -20,7 +20,7 @@ type Base struct {
 	Settings `json:"settings"`
 }
 
-// Name returns name of provider
+// GetName returns name of provider
 func (b *Base) GetName() string {
 	return b.Name
 }

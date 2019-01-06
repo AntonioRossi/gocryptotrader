@@ -304,7 +304,7 @@ func (b *Bitmex) wsHandleIncomingData() {
 var snapshotloaded = make(map[pair.CurrencyPair]map[assets.AssetType]bool)
 
 // ProcessOrderbook processes orderbook updates
-func (b *Bitmex) processOrderbook(data []OrderBookL2, action string, currencyPair pair.CurrencyPair, assetType assets.AssetType) error {
+func (b *Bitmex) processOrderbook(data []OrderBookL2, action string, currencyPair pair.CurrencyPair, assetType assets.AssetType) error { // golint: unparam (always recv's CONTRACT)
 	if len(data) < 1 {
 		return errors.New("bitmex_websocket.go error - no orderbook data")
 	}

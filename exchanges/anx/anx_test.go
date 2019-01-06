@@ -1,7 +1,6 @@
 package anx
 
 import (
-	"log"
 	"testing"
 
 	"github.com/thrasher-/gocryptotrader/common"
@@ -50,12 +49,10 @@ func TestSetup(t *testing.T) {
 	a.API.Credentials.Secret = testAPISecret
 	a.API.AuthenticatedSupport = true
 
-	log.Println(anxConfig)
-
 	if !a.Enabled {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
-	if !a.Verbose {
+	if a.Verbose {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
 	if len(a.BaseCurrencies) == 0 {

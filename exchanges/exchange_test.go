@@ -136,7 +136,7 @@ func TestSetAutoPairDefaults(t *testing.T) {
 		t.Fatalf("Test failed. TestSetAutoPairDefaults load config failed. Error %s", err)
 	}
 
-	if exch.Features.Supports.RESTCapabilities.AutoPairUpdates != false {
+	if exch.Features.Supports.RESTCapabilities.AutoPairUpdates {
 		t.Fatal("Test failed. TestSetAutoPairDefaults Incorrect value")
 	}
 }
@@ -274,13 +274,13 @@ func TestSetCurrencyPairFormat(t *testing.T) {
 	b.SetCurrencyPairFormat()
 
 	if b.CurrencyPairs.ConfigFormat.Delimiter != "" &&
-		b.CurrencyPairs.ConfigFormat.Index != "BTC" &&
+		b.CurrencyPairs.ConfigFormat.Index != symbol.BTC &&
 		b.CurrencyPairs.ConfigFormat.Uppercase {
 		t.Fatal("Test failed. TestSetCurrencyPairFormat ConfigCurrencyPairFormat values are incorrect")
 	}
 
 	if b.CurrencyPairs.ConfigFormat.Delimiter != "" &&
-		b.CurrencyPairs.ConfigFormat.Index != "BTC" &&
+		b.CurrencyPairs.ConfigFormat.Index != symbol.BTC &&
 		b.CurrencyPairs.ConfigFormat.Uppercase {
 		t.Fatal("Test failed. TestSetCurrencyPairFormat RequestCurrencyPairFormat values are incorrect")
 	}
@@ -309,7 +309,7 @@ func TestGetEnabledPairs(t *testing.T) {
 		Name: "TESTNAME",
 	}
 
-	b.CurrencyPairs.Spot.Enabled = []string{"BTC-USD"}
+	b.CurrencyPairs.Spot.Enabled = []string{defaultTestCurrencyPair}
 	format := config.CurrencyPairFormatConfig{
 		Delimiter: "-",
 		Index:     "",
@@ -321,29 +321,29 @@ func TestGetEnabledPairs(t *testing.T) {
 	b.CurrencyPairs.ConfigFormat = format
 
 	c := b.GetEnabledPairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = "~"
 	b.CurrencyPairs.RequestFormat = format
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = []string{"BTCDOGE"}
-	format.Index = "BTC"
+	format.Index = symbol.BTC
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetEnabledPairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "DOGE" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "DOGE" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
@@ -351,23 +351,23 @@ func TestGetEnabledPairs(t *testing.T) {
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = "_"
 	c = b.GetEnabledPairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "USD" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "USD" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = []string{"BTCDOGE"}
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = ""
-	b.CurrencyPairs.ConfigFormat.Index = "BTC"
+	b.CurrencyPairs.ConfigFormat.Index = symbol.BTC
 	c = b.GetEnabledPairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "DOGE" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "DOGE" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = []string{"BTCUSD"}
 	b.CurrencyPairs.ConfigFormat.Index = ""
 	c = b.GetEnabledPairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "USD" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "USD" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 }
@@ -377,7 +377,7 @@ func TestGetAvailablePairs(t *testing.T) {
 		Name: "TESTNAME",
 	}
 
-	b.CurrencyPairs.Spot.Available = []string{"BTC-USD"}
+	b.CurrencyPairs.Spot.Available = []string{defaultTestCurrencyPair}
 	format := config.CurrencyPairFormatConfig{
 		Delimiter: "-",
 		Index:     "",
@@ -389,29 +389,29 @@ func TestGetAvailablePairs(t *testing.T) {
 	b.CurrencyPairs.ConfigFormat = format
 
 	c := b.GetAvailablePairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = "~"
 	b.CurrencyPairs.RequestFormat = format
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Pair().String() != "BTC-USD" {
+	if c[0].Pair().String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Available = []string{"BTCDOGE"}
-	format.Index = "BTC"
+	format.Index = symbol.BTC
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetAvailablePairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "DOGE" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "DOGE" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
@@ -419,23 +419,23 @@ func TestGetAvailablePairs(t *testing.T) {
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = "_"
 	c = b.GetAvailablePairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "USD" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "USD" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Available = []string{"BTCDOGE"}
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = ""
-	b.CurrencyPairs.ConfigFormat.Index = "BTC"
+	b.CurrencyPairs.ConfigFormat.Index = symbol.BTC
 	c = b.GetAvailablePairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "DOGE" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "DOGE" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Available = []string{"BTCUSD"}
 	b.CurrencyPairs.ConfigFormat.Index = ""
 	c = b.GetAvailablePairs(assetType)
-	if c[0].FirstCurrency.String() != "BTC" && c[0].SecondCurrency.String() != "USD" {
+	if c[0].FirstCurrency.String() != symbol.BTC && c[0].SecondCurrency.String() != "USD" {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 }
@@ -445,8 +445,8 @@ func TestSupportsPair(t *testing.T) {
 		Name: "TESTNAME",
 	}
 
-	b.CurrencyPairs.Spot.Available = []string{"BTC-USD", "ETH-USD"}
-	b.CurrencyPairs.Spot.Enabled = []string{"BTC-USD"}
+	b.CurrencyPairs.Spot.Available = []string{defaultTestCurrencyPair, "ETH-USD"}
+	b.CurrencyPairs.Spot.Enabled = []string{defaultTestCurrencyPair}
 
 	format := config.CurrencyPairFormatConfig{
 		Delimiter: "-",
@@ -458,7 +458,7 @@ func TestSupportsPair(t *testing.T) {
 	b.CurrencyPairs.ConfigFormat = format
 	assetType := assets.AssetTypeSpot
 
-	if !b.SupportsPair(pair.NewCurrencyPair("BTC", "USD"), true, assetType) {
+	if !b.SupportsPair(pair.NewCurrencyPair(symbol.BTC, "USD"), true, assetType) {
 		t.Error("Test Failed - Exchange SupportsPair() incorrect value")
 	}
 
@@ -514,8 +514,8 @@ func TestFormatExchangeCurrency(t *testing.T) {
 		Delimiter: "-",
 	}
 
-	pair := pair.NewCurrencyPair("BTC", "USD")
-	expected := "BTC-USD"
+	pair := pair.NewCurrencyPair(symbol.BTC, "USD")
+	expected := defaultTestCurrencyPair
 	actual := b.FormatExchangeCurrency(pair, assets.AssetTypeSpot)
 
 	if actual.String() != expected {

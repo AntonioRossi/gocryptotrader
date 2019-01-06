@@ -52,7 +52,7 @@ func TestConfigAllJsonResponse(t *testing.T) {
 
 func TestInvalidHostRequest(t *testing.T) {
 	t.Parallel()
-	req, err := http.NewRequest("GET", "/config/all", nil)
+	req, err := http.NewRequest(http.MethodGet, "/config/all", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +68,11 @@ func TestInvalidHostRequest(t *testing.T) {
 
 func TestValidHostRequest(t *testing.T) {
 	t.Parallel()
-	req, err := http.NewRequest("GET", "/config/all", nil)
+	req, err := http.NewRequest(http.MethodGet, "/config/all", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Host = common.ExtractHost(Bot.Config.RESTServer.ListenAddress)
+	req.Host = common.ExtractHost(Bot.Config.RemoteControl.DeprecatedRPC.ListenAddress)
 
 	resp := httptest.NewRecorder()
 	NewRouter(true).ServeHTTP(resp, req)

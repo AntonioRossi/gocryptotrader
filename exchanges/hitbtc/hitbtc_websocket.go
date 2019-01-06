@@ -170,7 +170,7 @@ func (h *HitBTC) WsHandleData() {
 
 				h.Websocket.DataHandler <- exchange.TickerData{
 					Exchange:  h.GetName(),
-					AssetType: "SPOT",
+					AssetType: assets.AssetTypeSpot,
 					Pair:      pair.NewCurrencyPairFromString(ticker.Params.Symbol),
 					Quantity:  ticker.Params.Volume,
 					Timestamp: ts,
@@ -244,7 +244,7 @@ func (h *HitBTC) WsProcessOrderbookSnapshot(ob WsOrderbook) error {
 	var newOrderbook orderbook.Base
 	newOrderbook.Asks = asks
 	newOrderbook.Bids = bids
-	newOrderbook.AssetType = "SPOT"
+	newOrderbook.AssetType = assets.AssetTypeSpot
 	newOrderbook.CurrencyPair = ob.Params.Symbol
 	newOrderbook.LastUpdated = time.Now()
 	newOrderbook.Pair = p
@@ -256,7 +256,7 @@ func (h *HitBTC) WsProcessOrderbookSnapshot(ob WsOrderbook) error {
 
 	h.Websocket.DataHandler <- exchange.WebsocketOrderbookUpdate{
 		Exchange: h.GetName(),
-		Asset:    "SPOT",
+		Asset:    assets.AssetTypeSpot,
 		Pair:     p,
 	}
 
@@ -280,14 +280,14 @@ func (h *HitBTC) WsProcessOrderbookUpdate(ob WsOrderbook) error {
 
 	p := pair.NewCurrencyPairFromString(ob.Params.Symbol)
 
-	err := h.Websocket.Orderbook.Update(bids, asks, p, time.Now(), h.GetName(), "SPOT")
+	err := h.Websocket.Orderbook.Update(bids, asks, p, time.Now(), h.GetName(), assets.AssetTypeSpot)
 	if err != nil {
 		return err
 	}
 
 	h.Websocket.DataHandler <- exchange.WebsocketOrderbookUpdate{
 		Exchange: h.GetName(),
-		Asset:    "SPOT",
+		Asset:    assets.AssetTypeSpot,
 		Pair:     p,
 	}
 	return nil

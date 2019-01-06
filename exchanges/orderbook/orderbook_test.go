@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/thrasher-/gocryptotrader/currency/pair"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 )
 
 func TestCalculateTotalBids(t *testing.T) {
@@ -83,9 +84,9 @@ func TestGetOrderbook(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	CreateNewOrderbook("Exchange", currency, base, Spot)
+	CreateNewOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
-	result, err := GetOrderbook("Exchange", currency, Spot)
+	result, err := GetOrderbook("Exchange", currency, assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatalf("Test failed. TestGetOrderbook failed to get orderbook. Error %s",
 			err)
@@ -95,19 +96,19 @@ func TestGetOrderbook(t *testing.T) {
 		t.Fatal("Test failed. TestGetOrderbook failed. Mismatched pairs")
 	}
 
-	_, err = GetOrderbook("nonexistent", currency, Spot)
+	_, err = GetOrderbook("nonexistent", currency, assets.AssetTypeSpot)
 	if err == nil {
 		t.Fatal("Test failed. TestGetOrderbook retrieved non-existent orderbook")
 	}
 
 	currency.FirstCurrency = "blah"
-	_, err = GetOrderbook("Exchange", currency, Spot)
+	_, err = GetOrderbook("Exchange", currency, assets.AssetTypeSpot)
 	if err == nil {
 		t.Fatal("Test failed. TestGetOrderbook retrieved non-existent orderbook using invalid first currency")
 	}
 
 	newCurrency := pair.NewCurrencyPair("BTC", "AUD")
-	_, err = GetOrderbook("Exchange", newCurrency, Spot)
+	_, err = GetOrderbook("Exchange", newCurrency, assets.AssetTypeSpot)
 	if err == nil {
 		t.Fatal("Test failed. TestGetOrderbook retrieved non-existent orderbook using invalid second currency")
 	}
@@ -122,7 +123,7 @@ func TestGetOrderbookByExchange(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	CreateNewOrderbook("Exchange", currency, base, Spot)
+	CreateNewOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
 	_, err := GetOrderbookByExchange("Exchange")
 	if err != nil {
@@ -145,7 +146,7 @@ func TestFirstCurrencyExists(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	CreateNewOrderbook("Exchange", currency, base, Spot)
+	CreateNewOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
 	if !FirstCurrencyExists("Exchange", currency.FirstCurrency) {
 		t.Fatal("Test failed. TestFirstCurrencyExists expected first currency doesn't exist")
@@ -166,7 +167,7 @@ func TestSecondCurrencyExists(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	CreateNewOrderbook("Exchange", currency, base, Spot)
+	CreateNewOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
 	if !SecondCurrencyExists("Exchange", currency) {
 		t.Fatal("Test failed. TestSecondCurrencyExists expected first currency doesn't exist")
@@ -187,9 +188,9 @@ func TestCreateNewOrderbook(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	CreateNewOrderbook("Exchange", currency, base, Spot)
+	CreateNewOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
-	result, err := GetOrderbook("Exchange", currency, Spot)
+	result, err := GetOrderbook("Exchange", currency, assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatal("Test failed. TestCreateNewOrderbook failed to create new orderbook")
 	}
@@ -219,9 +220,9 @@ func TestProcessOrderbook(t *testing.T) {
 		Bids:         []Item{{Price: 200, Amount: 10}},
 	}
 
-	ProcessOrderbook("Exchange", currency, base, Spot)
+	ProcessOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
-	result, err := GetOrderbook("Exchange", currency, Spot)
+	result, err := GetOrderbook("Exchange", currency, assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatal("Test failed. TestProcessOrderbook failed to create new orderbook")
 	}
@@ -232,9 +233,9 @@ func TestProcessOrderbook(t *testing.T) {
 
 	currency = pair.NewCurrencyPair("BTC", "GBP")
 	base.Pair = currency
-	ProcessOrderbook("Exchange", currency, base, Spot)
+	ProcessOrderbook("Exchange", currency, base, assets.AssetTypeSpot)
 
-	result, err = GetOrderbook("Exchange", currency, Spot)
+	result, err = GetOrderbook("Exchange", currency, assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatal("Test failed. TestProcessOrderbook failed to retrieve new orderbook")
 	}
@@ -297,7 +298,7 @@ func TestProcessOrderbook(t *testing.T) {
 				Bids:         bids,
 			}
 
-			ProcessOrderbook(newName, newPairs, base, Spot)
+			ProcessOrderbook(newName, newPairs, base, assets.AssetTypeSpot)
 			m.Lock()
 			testArray = append(testArray, quick{Name: newName, P: newPairs, Bids: bids, Asks: asks})
 			m.Unlock()
@@ -310,7 +311,7 @@ func TestProcessOrderbook(t *testing.T) {
 		wg.Add(1)
 		fatalErr := false
 		go func(test quick) {
-			result, err := GetOrderbook(test.Name, test.P, Spot)
+			result, err := GetOrderbook(test.Name, test.P, assets.AssetTypeSpot)
 			if err != nil {
 				fatalErr = true
 				return

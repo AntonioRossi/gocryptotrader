@@ -121,7 +121,7 @@ func (b *Binance) UpdateLocalCache(ob WebsocketDepthStream) error {
 		currencyPair,
 		updatedTime,
 		b.GetName(),
-		"SPOT")
+		assets.AssetTypeSpot)
 }
 
 // WSConnect intiates a websocket connection
@@ -168,7 +168,7 @@ func (b *Binance) WSConnect() error {
 	}
 
 	for _, ePair := range b.GetEnabledPairs(assets.AssetTypeSpot) {
-		err := b.SeedLocalCache(ePair)
+		err = b.SeedLocalCache(ePair)
 		if err != nil {
 			return err
 		}
@@ -261,7 +261,7 @@ func (b *Binance) WsHandleData() {
 						Price:        price,
 						Amount:       amount,
 						Exchange:     b.GetName(),
-						AssetType:    "SPOT",
+						AssetType:    assets.AssetTypeSpot,
 						Side:         trade.EventType,
 					}
 					continue
@@ -337,7 +337,7 @@ func (b *Binance) WsHandleData() {
 
 					b.Websocket.DataHandler <- exchange.WebsocketOrderbookUpdate{
 						Pair:     currencyPair,
-						Asset:    "SPOT",
+						Asset:    assets.AssetTypeSpot,
 						Exchange: b.GetName(),
 					}
 					continue

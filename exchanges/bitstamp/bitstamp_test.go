@@ -26,10 +26,10 @@ func TestSetDefaults(t *testing.T) {
 	if b.Name != "Bitstamp" {
 		t.Error("Test Failed - SetDefaults() error")
 	}
-	if b.Enabled {
+	if !b.Enabled {
 		t.Error("Test Failed - SetDefaults() error")
 	}
-	if b.Verbose {
+	if !b.Verbose {
 		t.Error("Test Failed - SetDefaults() error")
 	}
 	if b.Websocket.IsEnabled() {

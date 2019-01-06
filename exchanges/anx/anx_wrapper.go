@@ -10,7 +10,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency/pair"
-	"github.com/thrasher-/gocryptotrader/exchanges"
+	exchange "github.com/thrasher-/gocryptotrader/exchanges"
 	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-/gocryptotrader/exchanges/request"
@@ -98,7 +98,7 @@ func (a *ANX) SetDefaults() {
 	a.API.Endpoints.URL = a.API.Endpoints.URLDefault
 }
 
-//Setup is run on startup to setup exchange with config values
+// Setup is run on startup to setup exchange with config values
 func (a *ANX) Setup(exch *config.ExchangeConfig) error {
 	if !exch.Enabled {
 		a.SetEnabled(false)

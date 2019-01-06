@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	totalWrappers = 17
+	totalWrappers = 20
 )
 
 func main() {
 	var err error
 	engine.Bot, err = engine.New()
 	if err != nil {
-		log.Fatalf("Failed to initalise engine. Err: %s", err)
+		log.Fatalf("Failed to initialise engine. Err: %s", err)
 	}
 
 	engine.Bot.Settings = engine.Settings{
@@ -141,6 +141,16 @@ func testWrappers(e exchange.IBotExchange) []string {
 		funcs = append(funcs, "GetOrderInfo")
 	}
 
+	_, err = e.GetOrderHistory(exchange.GetOrdersRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "GetOrderHistory")
+	}
+
+	_, err = e.GetActiveOrders(exchange.GetOrdersRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "GetActiveOrders")
+	}
+
 	_, err = e.GetDepositAddress("BTC", "")
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "GetDepositAddress")
@@ -154,6 +164,10 @@ func testWrappers(e exchange.IBotExchange) []string {
 	_, err = e.WithdrawFiatFunds(exchange.WithdrawRequest{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "WithdrawFiatFunds")
+	}
+	_, err = e.WithdrawFiatFundsToInternationalBank(exchange.WithdrawRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "WithdrawFiatFundsToInternationalBank")
 	}
 
 	return funcs
